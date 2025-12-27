@@ -7,11 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
-* {
-  box-sizing: border-box;
-  font-family: 'Inter', sans-serif;
-}
-
+* { box-sizing: border-box; font-family: 'Inter', sans-serif; }
 body {
   margin: 0;
   background: #f4f7fb;
@@ -19,7 +15,6 @@ body {
   justify-content: center;
   padding: 30px 10px;
 }
-
 .app {
   background: white;
   width: 100%;
@@ -28,12 +23,7 @@ body {
   padding: 24px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.08);
 }
-
-h1 {
-  text-align: center;
-  margin-bottom: 20px;
-  font-weight: 600;
-}
+h1 { text-align: center; margin-bottom: 20px; font-weight: 600; }
 
 .balance {
   background: linear-gradient(135deg, #4f46e5, #6366f1);
@@ -41,20 +31,24 @@ h1 {
   padding: 20px;
   border-radius: 16px;
   text-align: center;
+  margin-bottom: 16px;
+}
+.balance h2 { margin: 0; font-size: 14px; opacity: .8; }
+.balance p { font-size: 28px; margin: 6px 0 0; font-weight: 600; }
+
+.stats {
+  display: flex;
+  gap: 12px;
   margin-bottom: 20px;
 }
-
-.balance h2 {
-  margin: 0;
-  font-size: 14px;
-  opacity: 0.8;
+.stat {
+  flex: 1;
+  padding: 14px;
+  border-radius: 14px;
+  text-align: center;
 }
-
-.balance p {
-  font-size: 28px;
-  margin: 6px 0 0;
-  font-weight: 600;
-}
+.stat.deposit { background: #ecfeff; }
+.stat.spent { background: #fef2f2; }
 
 input, button {
   width: 100%;
@@ -64,47 +58,21 @@ input, button {
   margin-bottom: 12px;
   font-size: 14px;
 }
-
 button {
   background: #4f46e5;
   color: white;
   border: none;
   font-weight: 500;
   cursor: pointer;
-  transition: 0.2s;
 }
-
-button:hover {
-  background: #4338ca;
-}
-
-.expense-list {
-  margin-top: 20px;
-}
-
 .expense-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
   padding: 12px;
   border-radius: 12px;
   background: #f1f5f9;
   margin-bottom: 10px;
   font-size: 14px;
-}
-
-.expense-item span {
-  opacity: 0.8;
-}
-
-.remove {
-  background: #ef4444;
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  border: none;
-  color: white;
-  cursor: pointer;
 }
 </style>
 </head>
@@ -118,44 +86,60 @@ button:hover {
     <p id="balance">₹0</p>
   </div>
 
-  <input type="number" id="deposit" placeholder="Enter deposit amount">
+  <div class="stats">
+    <div class="stat deposit">
+      <div style="font-size:12px; opacity:.7;">Deposited</div>
+      <div id="totalDeposited" style="font-size:20px; font-weight:600;">₹0</div>
+    </div>
+    <div class="stat spent">
+      <div style="font-size:12px; opacity:.7;">Spent</div>
+      <div id="totalSpent" style="font-size:20px; font-weight:600;">₹0</div>
+    </div>
+  </div>
+
+  <input type="number" id="deposit" placeholder="Deposit amount">
   <button onclick="addDeposit()">Add Deposit</button>
 
   <input type="text" id="expenseName" placeholder="Expense name">
   <input type="number" id="expenseAmount" placeholder="Expense amount">
   <button onclick="addExpense()">Add Expense</button>
 
-  <div class="expense-list" id="expenseList"></div>
+  <div id="expenseList"></div>
 </div>
 
 <script>
-const API = "https://sheetdb.io/api/v1/es2uuhqmlbh84";
+const API = "https://sheetdb.io/api/v1/YOUR_API_ID_HERE";
 
-let balance = 0;
+let balance = 0, totalDeposited = 0, totalSpent = 0;
 
-async function loadExpenses() {
+async function loadData() {
   const res = await fetch(API);
   const data = await res.json();
 
-  document.getElementById("expenseList").innerHTML = "";
   balance = 0;
+  totalDeposited = 0;
+  totalSpent = 0;
+  document.getElementById("expenseList").innerHTML = "";
 
   data.forEach(row => {
-    if (row.type === "deposit") balance += Number(row.amount);
-    if (row.type === "expense") balance -= Number(row.amount);
-
-    if (row.type === "expense") {
-      renderExpense(row.name, row.amount);
+    const amt = Number(row.amount);
+    if (row.type === "deposit") {
+      balance += amt;
+      totalDeposited += amt;
+    } else if (row.type === "expense") {
+      balance -= amt;
+      totalSpent += amt;
+      renderExpense(row.name, amt);
     }
   });
 
-  updateBalance();
+  updateUI();
 }
 
 function renderExpense(name, amount) {
   const div = document.createElement("div");
   div.className = "expense-item";
-  div.innerHTML = `<span>${name} — ₹${amount}</span>`;
+  div.innerHTML = `<span>${name}</span><span>₹${amount}</span>`;
   document.getElementById("expenseList").appendChild(div);
 }
 
@@ -165,14 +149,12 @@ async function addDeposit() {
 
   await fetch(API, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      data: [{ name: "Deposit", amount, type: "deposit", date: new Date().toISOString() }]
-    })
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ data: [{ name: "Deposit", amount, type: "deposit", date: new Date().toISOString() }] })
   });
 
   document.getElementById("deposit").value = "";
-  loadExpenses();
+  loadData();
 }
 
 async function addExpense() {
@@ -182,22 +164,22 @@ async function addExpense() {
 
   await fetch(API, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      data: [{ name, amount, type: "expense", date: new Date().toISOString() }]
-    })
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ data: [{ name, amount, type: "expense", date: new Date().toISOString() }] })
   });
 
   document.getElementById("expenseName").value = "";
   document.getElementById("expenseAmount").value = "";
-  loadExpenses();
+  loadData();
 }
 
-function updateBalance() {
+function updateUI() {
   document.getElementById("balance").innerText = `₹${balance}`;
+  document.getElementById("totalDeposited").innerText = `₹${totalDeposited}`;
+  document.getElementById("totalSpent").innerText = `₹${totalSpent}`;
 }
 
-loadExpenses();
+loadData();
 </script>
 </body>
 </html>
