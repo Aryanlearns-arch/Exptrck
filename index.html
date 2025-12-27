@@ -129,39 +129,75 @@ button:hover {
 </div>
 
 <script>
+const API = "https://sheetdb.io/api/v1/es2uuhqmlbh84";
+
 let balance = 0;
 
-function addDeposit() {
-  const amount = Number(document.getElementById('deposit').value);
-  if (amount > 0) {
-    balance += amount;
-    updateBalance();
-    document.getElementById('deposit').value = '';
-  }
+async function loadExpenses() {
+  const res = await fetch(API);
+  const data = await res.json();
+
+  document.getElementById("expenseList").innerHTML = "";
+  balance = 0;
+
+  data.forEach(row => {
+    if (row.type === "deposit") balance += Number(row.amount);
+    if (row.type === "expense") balance -= Number(row.amount);
+
+    if (row.type === "expense") {
+      renderExpense(row.name, row.amount);
+    }
+  });
+
+  updateBalance();
 }
 
-function addExpense() {
-  const name = document.getElementById('expenseName').value;
-  const amount = Number(document.getElementById('expenseAmount').value);
+function renderExpense(name, amount) {
+  const div = document.createElement("div");
+  div.className = "expense-item";
+  div.innerHTML = `<span>${name} — ₹${amount}</span>`;
+  document.getElementById("expenseList").appendChild(div);
+}
 
-  if (name && amount > 0) {
-    balance -= amount;
-    updateBalance();
+async function addDeposit() {
+  const amount = Number(document.getElementById("deposit").value);
+  if (!amount || amount <= 0) return;
 
-    const div = document.createElement('div');
-    div.className = 'expense-item';
-    div.innerHTML = `<span>${name} — ₹${amount}</span>
-                     <button class="remove" onclick="this.parentElement.remove()">X</button>`;
-    document.getElementById('expenseList').appendChild(div);
+  await fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      data: [{ name: "Deposit", amount, type: "deposit", date: new Date().toISOString() }]
+    })
+  });
 
-    document.getElementById('expenseName').value = '';
-    document.getElementById('expenseAmount').value = '';
-  }
+  document.getElementById("deposit").value = "";
+  loadExpenses();
+}
+
+async function addExpense() {
+  const name = document.getElementById("expenseName").value;
+  const amount = Number(document.getElementById("expenseAmount").value);
+  if (!name || !amount || amount <= 0) return;
+
+  await fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      data: [{ name, amount, type: "expense", date: new Date().toISOString() }]
+    })
+  });
+
+  document.getElementById("expenseName").value = "";
+  document.getElementById("expenseAmount").value = "";
+  loadExpenses();
 }
 
 function updateBalance() {
-  document.getElementById('balance').innerText = `₹${balance}`;
+  document.getElementById("balance").innerText = `₹${balance}`;
 }
+
+loadExpenses();
 </script>
 </body>
 </html>
